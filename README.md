@@ -35,6 +35,83 @@ The frontend is a modern web application built with **Next.js 15 (App Router)**.
    - Once the user confirms the issue is fixed in the chat (e.g., typing *"it is resolved"*), the system automatically updates the case to `resolved` and gracefully ends the diagnostic session.
 
 ---
+## 🏗️ System Architecture
+
+```mermaid
+flowchart LR
+
+    %% USER
+    U["👨‍💻 User / Network Engineer"]
+
+    %% FRONTEND
+    subgraph FE["🖥️ Frontend — Next.js 15"]
+        UI1["Dashboard"]
+        UI2["New Case + Evidence"]
+        UI3["Case Details"]
+        UI4["Progressive Chat"]
+    end
+
+    %% BACKEND
+    subgraph BE["⚡ Backend — FastAPI"]
+        API["REST API"]
+        CASE["Case Management"]
+        DIAG["Diagnosis Pipeline"]
+        CHAT["Chat Handler"]
+    end
+
+    %% DATA
+    subgraph DB["🗄️ Data Layer"]
+        SQL["SQLite"]
+        ORM["SQLAlchemy ORM"]
+        MODELS["Case • Diagnosis • CaseMessage"]
+    end
+
+    %% AI
+    subgraph AI["🤖 AI Layer"]
+        LLM["NVIDIA Nemotron LLM"]
+        PROMPT["Context + Prompt Engineering"]
+        RESULT["Structured Diagnosis"]
+    end
+
+    %% FLOW
+    U --> UI1
+    U --> UI2
+    U --> UI3
+    U --> UI4
+
+    UI2 --> API
+    UI3 --> API
+    UI4 --> API
+
+    API --> CASE
+    API --> DIAG
+    API --> CHAT
+
+    CASE --> ORM
+    ORM --> SQL
+    MODELS --> ORM
+
+    DIAG --> PROMPT
+    PROMPT --> LLM
+    LLM --> RESULT
+
+    RESULT --> DIAG
+    DIAG --> ORM
+    DIAG --> UI3
+
+    CHAT --> PROMPT
+    CHAT --> LLM
+    LLM --> CHAT
+    CHAT --> UI4
+
+    CASE -.->|"New case"| SQL
+    CASE -.->|"Older ongoing cases"| HOLD["⏸️ On-Hold"]
+
+    UI4 --> RES{"Issue Resolved?"}
+    RES -->|Yes| DONE["✅ Resolved"]
+    RES -->|No| CHAT
+```
+---
 
 ## 🛠️ Installation & Setup
 
