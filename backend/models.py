@@ -14,7 +14,7 @@ class Case(Base):
     id = Column(String, primary_key=True, index=True)
     title = Column(String)
     symptom = Column(Text)
-    status = Column(String, default="open")
+    status = Column(String, default="ongoing")
     created_at = Column(DateTime, server_default=func.now())
 
 class Evidence(Base):
@@ -35,3 +35,12 @@ class Diagnosis(Base):
     explanation = Column(Text)
     next_command = Column(String)
     suggested_fix = Column(Text)
+
+class CaseMessage(Base):
+    __tablename__ = "case_messages"
+    id = Column(Integer, primary_key=True, index=True)
+    case_id = Column(String, ForeignKey("cases.id"))
+    role = Column(String) # "user" or "assistant"
+    content = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+

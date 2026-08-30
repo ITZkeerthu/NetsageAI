@@ -2,18 +2,26 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { getCase } from "@/lib/api";
+import ReactMarkdown from "react-markdown";
+import { getCase, getChat, postChat } from "@/lib/api";
 
 export default function CaseView({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const [caseData, setCaseData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
 
   useEffect(() => {
-    getCase(resolvedParams.id)
-      .then(data => {
+    Promise.all([
+      getCase(resolvedParams.id),
+      getChat(resolvedParams.id).catch(() => [])
+    ])
+      .then(([data, chatData]) => {
         setCaseData(data);
+        setChatHistory(chatData);
         setLoading(false);
       })
       .catch(err => {
@@ -21,6 +29,26 @@ export default function CaseView({ params }: { params: Promise<{ id: string }> }
         setLoading(false);
       });
   }, [resolvedParams.id]);
+
+  const handleSendChat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || chatLoading) return;
+    
+    const userMsg = chatInput.trim();
+    setChatInput("");
+    setChatHistory(prev => [...prev, { role: "user", content: userMsg, id: Date.now() }]);
+    setChatLoading(true);
+
+    try {
+      const aiReply = await postChat(resolvedParams.id, userMsg);
+      setChatHistory(prev => [...prev, aiReply]);
+    } catch (err) {
+      console.error(err);
+      setChatHistory(prev => [...prev, { role: "assistant", content: "Sorry, failed to get a response.", id: Date.now() }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 flex">
@@ -125,6 +153,67 @@ export default function CaseView({ params }: { params: Promise<{ id: string }> }
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Interactive Chat Panel */}
+            <div className="mt-8 bg-slate-900 border border-slate-800 rounded-xl p-6">
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+                Progressive Troubleshooting
+              </h3>
+              
+              <div className="bg-slate-950 border border-slate-800 rounded-lg flex flex-col" style={{ height: "400px" }}>
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {chatHistory.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-slate-500">
+                      Ask a follow-up question or provide more evidence to continue troubleshooting.
+                    </div>
+                  ) : (
+                    chatHistory.map((msg, idx) => (
+                      <div key={msg.id || idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] rounded-lg p-3 ${
+                          msg.role === 'user' 
+                            ? 'bg-blue-600 text-white' 
+                            : 'bg-slate-800 border border-slate-700 text-slate-200 prose prose-invert prose-sm max-w-none'
+                        }`}>
+                          {msg.role === 'user' ? (
+                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                          ) : (
+                            <ReactMarkdown>{msg.content}</ReactMarkdown>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  {chatLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-slate-800 border border-slate-700 text-slate-400 max-w-[80%] rounded-lg p-3">
+                        <p className="text-sm animate-pulse">NetSage is thinking...</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <form onSubmit={handleSendChat} className="p-3 border-t border-slate-800 flex gap-2">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Ask a question or share new findings... e.g. 'I ran show ip route and it is empty'"
+                    className="flex-1 bg-slate-900 border border-slate-700 rounded px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                    disabled={chatLoading}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!chatInput.trim() || chatLoading}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded font-medium text-sm transition"
+                  >
+                    Send
+                  </button>
+                </form>
               </div>
             </div>
           </>

@@ -73,3 +73,25 @@ export async function requestDiagnosis(data: DiagnoseRequest, case_id?: string):
 
   return response.json();
 }
+
+export async function getChat(case_id: string): Promise<any[]> {
+  const response = await fetch(`${API_BASE_URL}/cases/${case_id}/chat`);
+  if (!response.ok) throw new Error("Failed to fetch chat");
+  return response.json();
+}
+
+export async function postChat(case_id: string, message: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/cases/${case_id}/chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ message }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to post chat: ${response.statusText}`);
+  }
+
+  return response.json();
+}

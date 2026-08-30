@@ -101,3 +101,42 @@ if __name__ == "__main__":
     print("Testing Search Agent:")
     print(generate_search_queries("OSPF neighbor stuck in EXSTART in Packet Tracer"))
 
+def generate_chat_reply(history: list, new_message: str, case_context: str, is_resolved: bool = False) -> str:
+    """
+    history: list of dicts [{"role": "user"/"assistant", "content": "..."}]
+    """
+    if is_resolved:
+        system_instruction = "Respond to the user's latest message clearly and concisely. Acknowledge that the issue is now resolved, and do NOT ask if the issue is fixed or not."
+    else:
+        system_instruction = "Respond to the user's latest message clearly and concisely. By the end of your response, you MUST ask if the issue is fixed or not."
+
+    messages = [
+        {
+            "role": "system",
+            "content": f"You are NetSage, a network troubleshooting assistant helping a user with a specific case.\nCase Context:\n{case_context}\n\n{system_instruction}"
+        }
+    ]
+    messages.extend(history)
+    messages.append({"role": "user", "content": new_message})
+
+    try:
+        completion = client.chat.completions.create(
+            model=MODEL,
+            messages=messages,
+            temperature=0.3,
+            top_p=0.95,
+            max_tokens=4096,
+            extra_body={"chat_template_kwargs":{"enable_thinking":True},"reasoning_budget":8192},
+            stream=True
+        )
+        
+        content = ""
+        for chunk in completion:
+            if not chunk.choices:
+                continue
+            if chunk.choices[0].delta.content is not None:
+                content += chunk.choices[0].delta.content
+                
+        return content.strip()
+    except Exception as e:
+        return f"Error connecting to LLM: {str(e)}"
