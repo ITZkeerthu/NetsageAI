@@ -1,0 +1,10 @@
+{
+  "description": "Guides students through network troubleshooting with AI-assisted diagnosis, evidence analysis, and step-by-step fixes to enhance learning and problem-solving skills.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
